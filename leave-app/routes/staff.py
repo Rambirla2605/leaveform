@@ -42,7 +42,8 @@ def get_leaves():
         "reason": l.reason,
         "status": l.status,
         "submitted_at": l.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
-        "reviewed_at": l.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if l.reviewed_at else None
+        "reviewed_at": l.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if l.reviewed_at else None,
+        "reviewed_by_name": l.reviewer.name if l.reviewer else None
     } for l in leaves]
 
     return jsonify(result), 200
@@ -63,6 +64,7 @@ def approve_leave(leave_id):
 
     leave.status = 'approved'
     leave.reviewed_at = datetime.utcnow()
+    leave.reviewed_by = user_id
     db.session.commit()
 
     return jsonify({"message": "Leave approved"}), 200
@@ -83,6 +85,7 @@ def reject_leave(leave_id):
 
     leave.status = 'rejected'
     leave.reviewed_at = datetime.utcnow()
+    leave.reviewed_by = user_id
     db.session.commit()
 
     return jsonify({"message": "Leave rejected"}), 200
@@ -143,7 +146,8 @@ def get_history():
         "date": l.dates,
         "reason": l.reason,
         "status": l.status,
-        "reviewed_at": l.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if l.reviewed_at else None
+        "reviewed_at": l.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if l.reviewed_at else None,
+        "reviewed_by_name": l.reviewer.name if l.reviewer else None
     } for l in leaves]
 
     return jsonify(result), 200
@@ -158,10 +162,11 @@ def add_staff():
         return jsonify({"error": "Unauthorized"}), 403
 
     data = request.json
+    name = data.get('name')
     email = data.get('email')
     temp_password = data.get('temp_password')
 
-    if not email or not temp_password:
+    if not name or not email or not temp_password:
         return jsonify({"error": "Missing required fields"}), 400
 
     if User.query.filter_by(email=email).first():
@@ -169,6 +174,7 @@ def add_staff():
 
     hashed = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     new_staff = User(
+        name=name,
         email=email,
         password_hash=hashed,
         role='staff',
@@ -178,3 +184,21 @@ def add_staff():
     db.session.commit()
 
     return jsonify({"message": "Staff added successfully"}), 201
+
+@staff_bp.route('/list-staff', methods=['GET'])
+@jwt_required()
+def list_staff():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or user.email != 'iam.rambirla@gmail.com':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    staff_members = User.query.filter_by(role='staff').all()
+    result = [{
+        "id": s.id,
+        "name": s.name,
+        "email": s.email,
+        "created_at": s.created_at.strftime('%Y-%m-%d')
+    } for s in staff_members]
+
+    return jsonify(result), 200

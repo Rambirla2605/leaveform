@@ -1,96 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Leave Approval System</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – Leave Approval System</title>
+  <meta name="description" content="Secure login for the College Leave Approval System. Students and staff can sign in here.">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="center-container">
-        <div class="card auth-card">
-            <h2>Welcome Back</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" placeholder="Enter your email" required>
-                    <div id="emailError" class="error-msg"></div>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Enter your password" required>
-                    <button type="button" class="password-toggle" id="toggleIcon" onclick="togglePassword('password', 'toggleIcon')">👁️</button>
-                    <div id="passwordError" class="error-msg"></div>
-                </div>
-                <button type="submit" id="loginBtn" class="btn-primary mt-4">Login</button>
-            </form>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-icon">📋</div>
+        <h1>LeavePortal</h1>
+        <p>College Leave Approval System</p>
+      </div>
+
+      <h2>Welcome Back</h2>
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="25ecXXX@drngpit.ac.in" autocomplete="email" required>
+          <div id="emailError" class="error-msg">Please enter a valid email address.</div>
         </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
+          <button type="button" class="password-toggle" id="toggleIcon" onclick="togglePassword('password','toggleIcon')" aria-label="Toggle password">👁️</button>
+          <div id="passwordError" class="error-msg">Password is required.</div>
+        </div>
+        <button type="submit" id="loginBtn" class="btn-primary mt-4">Sign In</button>
+      </form>
+
+      <p class="text-center mt-4 text-sm text-muted">
+        Having trouble? Contact your administrator.
+      </p>
     </div>
+  </div>
 
-    <script src="/static/app.js"></script>
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const loginBtn = document.getElementById('loginBtn');
-            const emailError = document.getElementById('emailError');
-            const passwordError = document.getElementById('passwordError');
-            
-            emailError.style.display = 'none';
-            passwordError.style.display = 'none';
+  <script src="/static/app.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('loginBtn');
+      const emailErr = document.getElementById('emailError');
+      const passErr  = document.getElementById('passwordError');
 
-            // Basic validation
-            let valid = true;
-            if (!email) {
-                emailError.textContent = 'Email is required';
-                emailError.style.display = 'block';
-                valid = false;
-            }
-            if (!password) {
-                passwordError.textContent = 'Password is required';
-                passwordError.style.display = 'block';
-                valid = false;
-            }
-            if (!valid) return;
+      emailErr.style.display = 'none';
+      passErr.style.display  = 'none';
 
-            loginBtn.disabled = true;
-            loginBtn.textContent = 'Logging in...';
+      let valid = true;
+      if (!email) { emailErr.style.display = 'block'; valid = false; }
+      if (!password) { passErr.style.display = 'block'; valid = false; }
+      if (!valid) return;
 
-            try {
-                const res = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing in…';
 
-                const data = await res.json();
-
-                if (!res.ok) {
-                    showToast(data.error || 'Login failed', 'error');
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Login';
-                    return;
-                }
-
-                sessionStorage.setItem('token', data.token);
-                sessionStorage.setItem('email', email);
-
-                if (data.first_login) {
-                    window.location.href = '/change-password';
-                } else if (data.role === 'staff') {
-                    window.location.href = '/staff';
-                } else if (!data.has_details) {
-                    window.location.href = '/student-details';
-                } else {
-                    window.location.href = '/calendar';
-                }
-            } catch (err) {
-                showToast('An error occurred', 'error');
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Login';
-            }
+      try {
+        const res  = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
         });
-    </script>
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Login failed', 'error');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Sign In';
+          return;
+        }
+
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('email', email);
+
+        if (data.first_login)        window.location.href = '/change-password';
+        else if (data.role==='staff') window.location.href = '/staff';
+        else if (!data.has_details)   window.location.href = '/student-details';
+        else                          window.location.href = '/calendar';
+      } catch {
+        showToast('Network error. Please try again.', 'error');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign In';
+      }
+    });
+  </script>
 </body>
 </html>

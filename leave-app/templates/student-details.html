@@ -1,83 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Details - Leave Approval System</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Profile – LeavePortal</title>
+  <meta name="description" content="Enter your student details to complete your profile.">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="center-container">
-        <div class="card auth-card">
-            <h2>Complete Profile</h2>
-            <form id="detailsForm">
-                <div class="form-group">
-                    <label for="name">Full Name</label>
-                    <input type="text" id="name" required oninput="this.value = this.value.toUpperCase()">
-                </div>
-                <div class="form-group">
-                    <label for="department">Department</label>
-                    <input type="text" id="department" required oninput="this.value = this.value.toUpperCase()">
-                </div>
-                <div class="form-group">
-                    <label for="reg_number">Register Number</label>
-                    <input type="number" id="reg_number" required>
-                    <div id="regError" class="error-msg">Register number must be between 710725106064 and 710725106126</div>
-                </div>
-                <button type="submit" id="submitBtn" class="btn-primary mt-4">Save & Continue</button>
-            </form>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-icon">🎓</div>
+        <h1>LeavePortal</h1>
+        <p>Complete your student profile</p>
+      </div>
+
+      <h2>Complete Profile</h2>
+      <p class="text-center text-sm text-muted mb-4">
+        We need a few details before you can apply for leave.
+      </p>
+
+      <form id="detailsForm" novalidate>
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" placeholder="As per college records" required
+                 oninput="this.value=this.value.toUpperCase()" autocomplete="name">
         </div>
+        <div class="form-group">
+          <label for="department">Department</label>
+          <input type="text" id="department" placeholder="e.g. COMPUTER SCIENCE" required
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="form-group">
+          <label for="reg_number">Register Number</label>
+          <input type="number" id="reg_number" placeholder="710725106XXX" required>
+          <div id="regError" class="error-msg">Register number must be between 710725106064 and 710725106126.</div>
+        </div>
+        <button type="submit" id="submitBtn" class="btn-primary mt-4">Save &amp; Continue →</button>
+      </form>
     </div>
+  </div>
 
-    <script src="/static/app.js"></script>
-    <script>
-        if (!sessionStorage.getItem('token')) {
-            window.location.href = '/';
-        }
+  <script src="/static/app.js"></script>
+  <script>
+    if (!sessionStorage.getItem('token')) window.location.href = '/';
 
-        document.getElementById('detailsForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('name').value;
-            const department = document.getElementById('department').value;
-            const reg_number = document.getElementById('reg_number').value;
-            const regError = document.getElementById('regError');
-            const submitBtn = document.getElementById('submitBtn');
+    document.getElementById('detailsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name       = document.getElementById('name').value.trim();
+      const department = document.getElementById('department').value.trim();
+      const reg_number = document.getElementById('reg_number').value;
+      const regErr     = document.getElementById('regError');
+      const submitBtn  = document.getElementById('submitBtn');
 
-            const regNum = parseInt(reg_number);
-            if (regNum < 710725106064 || regNum > 710725106126) {
-                regError.style.display = 'block';
-                return;
-            }
-            regError.style.display = 'none';
+      regErr.style.display = 'none';
+      const regNum = parseInt(reg_number);
+      if (regNum < 710725106064 || regNum > 710725106126) {
+        regErr.style.display = 'block';
+        return;
+      }
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Saving...';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving…';
 
-            try {
-                const res = await authFetch('/api/student/details', {
-                    method: 'POST',
-                    body: JSON.stringify({ name, department, reg_number: regNum })
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    showToast(data.error || 'Failed to save details', 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Save & Continue';
-                    return;
-                }
-
-                showToast('Details saved successfully!', 'success');
-                setTimeout(() => {
-                    window.location.href = '/calendar';
-                }, 1000);
-            } catch (err) {
-                showToast('An error occurred', 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Save & Continue';
-            }
+      try {
+        const res  = await authFetch('/api/student/details', {
+          method: 'POST',
+          body: JSON.stringify({ name, department, reg_number: regNum })
         });
-    </script>
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Failed to save details', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Save & Continue →';
+          return;
+        }
+        showToast('Profile saved! Redirecting…', 'success');
+        setTimeout(() => { window.location.href = '/calendar'; }, 1200);
+      } catch {
+        showToast('Network error', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save & Continue →';
+      }
+    });
+  </script>
 </body>
 </html>

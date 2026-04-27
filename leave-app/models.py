@@ -26,5 +26,7 @@ class Leave(db.Model):
     status = db.Column(db.String(20), default='pending') # 'pending', 'approved', 'rejected'
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
     reviewed_at = db.Column(db.DateTime, nullable=True)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
-    user = db.relationship('User', backref=db.backref('leaves', lazy=True))
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('leaves', lazy=True))
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref=db.backref('reviewed_leaves', lazy=True))
