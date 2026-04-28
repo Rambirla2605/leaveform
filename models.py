@@ -30,3 +30,15 @@ class Leave(db.Model):
 
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('leaves', lazy=True))
     reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref=db.backref('reviewed_leaves', lazy=True))
+
+class PasswordResetRequest(db.Model):
+    __tablename__ = 'password_reset_requests'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending') # 'pending', 'approved', 'rejected'
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    resolved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('password_reset_requests', lazy=True))
+    resolver = db.relationship('User', foreign_keys=[resolved_by], backref=db.backref('resolved_password_requests', lazy=True))

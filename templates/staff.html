@@ -47,6 +47,9 @@
       <div class="nav-item" id="nav-history" onclick="switchTab('history')">
         <span class="nav-icon">📂</span> History
       </div>
+      <div class="nav-item" id="nav-password" onclick="switchTab('password')">
+        <span class="nav-icon">🔑</span> Password Resets
+      </div>
       <div class="nav-item" id="nav-admin" style="display:none;" onclick="switchTab('admin')">
         <span class="nav-icon">⚙️</span> Manage Staff
       </div>
@@ -144,6 +147,17 @@
         <div id="historyList"></div>
       </div>
 
+      <!-- ===== PASSWORD RESETS TAB ===== -->
+      <div id="tab-password" class="tab-content" style="display:none;">
+        <div class="page-header">
+          <div>
+            <h2>Password Reset Requests</h2>
+            <p class="page-subtitle">Approve or reject pending password resets</p>
+          </div>
+        </div>
+        <div id="passwordRequestsList"></div>
+      </div>
+
       <!-- ===== ADMIN TAB ===== -->
       <div id="tab-admin" class="tab-content" style="display:none;">
         <div class="page-header">
@@ -216,6 +230,7 @@
       if (tabId === 'requests')  loadRequests();
       if (tabId === 'history')   loadHistory();
       if (tabId === 'admin')     loadStaffList();
+      if (tabId === 'password')  loadPasswordRequests();
     }
 
     async function loadStaffList() {
@@ -406,6 +421,59 @@
         else showToast(data.error || 'Failed to add staff', 'error');
       } catch { showToast('Network error', 'error'); }
     });
+
+    // ---- Password Requests ----
+    async function loadPasswordRequests() {
+      try {
+        const res = await authFetch('/api/staff/password-requests');
+        const data = await res.json();
+        
+        const container = document.getElementById('passwordRequestsList');
+        container.innerHTML = '';
+        
+        if (!res.ok) {
+          container.innerHTML = `<p class="text-danger" style="color:var(--danger);">${data.error || 'Failed to load'}</p>`;
+          return;
+        }
+
+        if (data.length === 0) {
+          container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎉</div><p>No pending password reset requests.</p></div>';
+          return;
+        }
+
+        data.forEach(req => {
+          const div = document.createElement('div');
+          div.className = 'leave-card';
+          
+          div.innerHTML = `
+            <div class="leave-info">
+              <h4>${req.user_email} <span class="badge" style="background:var(--navy); padding:2px 6px; border-radius:4px; font-size:10px;">${req.user_role.toUpperCase()}</span></h4>
+              <p class="text-sm text-muted mt-2">Requested on: ${req.requested_at}</p>
+            </div>
+            <div class="leave-actions">
+              <button class="btn-approve btn-sm" onclick="reviewPasswordRequest(${req.id},'approve')">✓ Approve</button>
+              <button class="btn-reject btn-sm"  onclick="reviewPasswordRequest(${req.id},'reject')">✕ Reject</button>
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      } catch(e) { console.error(e); }
+    }
+
+    async function reviewPasswordRequest(id, action) {
+      showModal(`Are you sure you want to ${action} this password reset request?`, async () => {
+        try {
+          const res = await authFetch(`/api/staff/password-requests/${id}/${action}`, { method: 'POST' });
+          const data = await res.json();
+          if (res.ok) {
+            showToast(data.message, 'success');
+            loadPasswordRequests();
+          } else {
+            showToast(data.error || 'Error', 'error');
+          }
+        } catch { showToast('Network error', 'error'); }
+      });
+    }
 
     // Initial load
     loadStats();

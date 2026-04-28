@@ -33,9 +33,27 @@
         <button type="submit" id="loginBtn" class="btn-primary mt-4">Sign In</button>
       </form>
 
-      <p class="text-center mt-4 text-sm text-muted">
-        Having trouble? Contact your administrator.
-      </p>
+      <div class="text-center mt-4">
+        <a href="#" id="forgotPasswordLink" class="text-sm font-semibold">Forgot Password?</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div id="forgotPasswordModal" class="modal-overlay">
+    <div class="modal-content auth-card" style="padding: 30px; animation: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin: 0;">Reset Password</h2>
+        <button id="closeForgotModal" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted); padding: 0;">&times;</button>
+      </div>
+      <p class="text-sm text-muted mb-4" style="text-align: left;">Enter your email address to request a password reset from the administrator.</p>
+      <form id="forgotPasswordForm" novalidate>
+        <div class="form-group">
+          <label for="forgotEmail">Email Address</label>
+          <input type="email" id="forgotEmail" placeholder="Enter your email" required>
+        </div>
+        <button type="submit" id="forgotBtn" class="btn-primary mt-2">Submit Request</button>
+      </form>
     </div>
   </div>
 
@@ -86,6 +104,57 @@
         showToast('Network error. Please try again.', 'error');
         loginBtn.disabled = false;
         loginBtn.textContent = 'Sign In';
+      }
+    });
+
+    // Forgot Password Logic
+    const forgotModal = document.getElementById('forgotPasswordModal');
+    const forgotLink = document.getElementById('forgotPasswordLink');
+    const closeForgotModal = document.getElementById('closeForgotModal');
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    const forgotBtn = document.getElementById('forgotBtn');
+
+    forgotLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      forgotModal.classList.add('active');
+    });
+
+    closeForgotModal.addEventListener('click', () => {
+      forgotModal.classList.remove('active');
+    });
+
+    forgotModal.addEventListener('click', (e) => {
+      if(e.target === forgotModal) forgotModal.classList.remove('active');
+    });
+
+    forgotForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('forgotEmail').value.trim();
+      if (!email) return;
+
+      forgotBtn.disabled = true;
+      forgotBtn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || data.message || 'Request failed', 'error');
+        } else {
+          showToast(data.message, 'success');
+          forgotModal.classList.remove('active');
+          forgotForm.reset();
+        }
+      } catch {
+        showToast('Network error. Please try again.', 'error');
+      } finally {
+        forgotBtn.disabled = false;
+        forgotBtn.textContent = 'Submit Request';
       }
     });
   </script>

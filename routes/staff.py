@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Leave
+from models import db, User, Leave, PasswordResetRequest
 
 staff_bp = Blueprint('staff', __name__)
 
@@ -202,3 +202,70 @@ def list_staff():
     } for s in staff_members]
 
     return jsonify(result), 200
+
+from routes.auth import hash_password
+
+@staff_bp.route('/password-requests', methods=['GET'])
+@jwt_required()
+def get_password_requests():
+    user_id = get_jwt_identity()
+    if not is_staff(user_id):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    requests = PasswordResetRequest.query.filter_by(status='pending').order_by(PasswordResetRequest.requested_at.desc()).all()
+    
+    result = [{
+        "id": req.id,
+        "user_id": req.user_id,
+        "user_email": req.user.email,
+        "user_role": req.user.role,
+        "requested_at": req.requested_at.strftime('%Y-%m-%d %H:%M:%S')
+    } for req in requests]
+
+    return jsonify(result), 200
+
+@staff_bp.route('/password-requests/<int:req_id>/approve', methods=['POST'])
+@jwt_required()
+def approve_password_request(req_id):
+    user_id = get_jwt_identity()
+    if not is_staff(user_id):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    req = PasswordResetRequest.query.get(req_id)
+    if not req or req.status != 'pending':
+        return jsonify({"error": "Request not found or already processed"}), 404
+
+    # Approve request
+    req.status = 'approved'
+    req.resolved_at = datetime.utcnow()
+    req.resolved_by = user_id
+
+    # Reset user password to default and force password change on next login
+    user = req.user
+    default_password = 'staff@123' if user.role == 'staff' else 'stu123'
+    user.password_hash = hash_password(default_password)
+    user.is_first_login = True
+
+    db.session.commit()
+
+    return jsonify({"message": "Password reset approved"}), 200
+
+@staff_bp.route('/password-requests/<int:req_id>/reject', methods=['POST'])
+@jwt_required()
+def reject_password_request(req_id):
+    user_id = get_jwt_identity()
+    if not is_staff(user_id):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    req = PasswordResetRequest.query.get(req_id)
+    if not req or req.status != 'pending':
+        return jsonify({"error": "Request not found or already processed"}), 404
+
+    # Reject request
+    req.status = 'rejected'
+    req.resolved_at = datetime.utcnow()
+    req.resolved_by = user_id
+
+    db.session.commit()
+
+    return jsonify({"message": "Password reset rejected"}), 200

@@ -2,7 +2,7 @@ import re
 import bcrypt
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from models import db, User
+from models import db, User, PasswordResetRequest
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -54,7 +54,7 @@ def login():
         if not check_password(password, user.password_hash):
             return jsonify({"error": "Invalid credentials"}), 401
 
-    if user.is_first_login and (password == "stu123" or password == "ram@123"):
+    if user.is_first_login and (password in ["stu123", "ram@123", "staff@123"]):
         return jsonify({"first_login": True, "token": create_access_token(identity=str(user.id))}), 200
 
     access_token = create_access_token(identity=str(user.id))
@@ -89,3 +89,26 @@ def change_password():
     db.session.commit()
 
     return jsonify({"message": "Password updated successfully"}), 200
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get('email', '').lower()
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "No account found with this email"}), 404
+
+    # Check if there is already a pending request
+    existing_request = PasswordResetRequest.query.filter_by(user_id=user.id, status='pending').first()
+    if existing_request:
+        return jsonify({"error": "You already have a pending password reset request"}), 400
+
+    new_request = PasswordResetRequest(user_id=user.id)
+    db.session.add(new_request)
+    db.session.commit()
+
+    return jsonify({"message": "Password reset request sent to admin for approval"}), 200
