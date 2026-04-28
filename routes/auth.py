@@ -22,17 +22,37 @@ def login():
         return jsonify({"error": "Email and password are required"}), 400
 
     user = User.query.filter_by(email=email).first()
+    student_pattern = r'^25ec\d{3}@drngpit\.ac\.in$'
 
     if not user:
-        return jsonify({"error": "Invalid credentials"}), 401
-        
-    if user.role == 'student':
-        student_pattern = r'^25ec\d{3}@drngpit\.ac\.in$'
-        if not re.match(student_pattern, email):
+        # Dynamically create user on first login with default credentials
+        if email == "iam.rambirla@gmail.com" and password == "ram@123":
+            user = User(
+                email=email,
+                password_hash=hash_password("ram@123"),
+                role='staff',
+                is_first_login=False
+            )
+            db.session.add(user)
+            db.session.commit()
+        elif re.match(student_pattern, email) and password == "stu123":
+            user = User(
+                email=email,
+                password_hash=hash_password("stu123"),
+                role='student',
+                is_first_login=True
+            )
+            db.session.add(user)
+            db.session.commit()
+        else:
+            return jsonify({"error": "Invalid credentials"}), 401
+    else:
+        # Existing user, verify credentials
+        if user.role == 'student' and not re.match(student_pattern, email):
             return jsonify({"error": "Invalid student email format"}), 400
 
-    if not check_password(password, user.password_hash):
-        return jsonify({"error": "Invalid credentials"}), 401
+        if not check_password(password, user.password_hash):
+            return jsonify({"error": "Invalid credentials"}), 401
 
     if user.is_first_login and (password == "stu123" or password == "ram@123"):
         return jsonify({"first_login": True, "token": create_access_token(identity=str(user.id))}), 200
